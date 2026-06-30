@@ -1,0 +1,179 @@
+:root {
+  --bg: #eff8ff;
+  --surface: #f9fcff;
+  --ink: #17324a;
+  --muted: #4f6e87;
+  --brand: #2f7ecf;
+  --brand-2: #59afe8;
+  --border: #cfe5f6;
+  --ok: #168461;
+  --danger: #b53747;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(165deg, #eef7ff 0%, #e4f1fd 45%, #f5fbff 100%);
+  color: var(--ink);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.layout {
+  max-width: 940px;
+  margin: 24px auto;
+  padding: 0 14px 24px;
+  display: grid;
+  gap: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(34, 107, 168, 0.1);
+}
+
+h1,
+h2 {
+  margin: 0 0 8px;
+}
+
+.lead {
+  margin: 0;
+  color: var(--muted);
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.96rem;
+}
+
+input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn.ghost {
+  background: #eaf4fe;
+  color: #1f5f95;
+}
+
+.message {
+  min-height: 20px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.message.ok {
+  color: var(--ok);
+}
+
+.message.err {
+  color: var(--danger);
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.hint.center {
+  text-align: center;
+}
+
+.subdomain-control {
+  display: grid;
+  gap: 6px;
+}
+
+.subdomain-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.subdomain-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.rules-list {
+  display: grid;
+  gap: 10px;
+}
+
+.rule {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.rule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rule-title {
+  font-weight: 700;
+}
+
+.rule-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.rule-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .rule-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rule-actions {
+    width: 100%;
+  }
+
+  .rule-actions .btn {
+    flex: 1;
+  }
+}

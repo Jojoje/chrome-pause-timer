@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mindful Site Timer Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="card">
+        <h1>Mindful Site Timer</h1>
+        <p class="lead">Add distracting sites, set a daily allowance, and force a pause when the time is up.</p>
+      </section>
+
+      <section class="card">
+        <h2>General Settings</h2>
+        <form id="settings-form" class="stack">
+          <label>
+            Daily reset time
+            <input id="reset-time" type="time" required />
+          </label>
+
+          <label>
+            Pause animation seconds
+            <input id="wait-seconds" type="number" min="5" max="180" step="1" required />
+          </label>
+
+          <button class="btn primary" type="submit">Save settings</button>
+          <p id="settings-message" class="message"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Tracked Sites</h2>
+        <form id="add-rule-form" class="stack">
+          <label>
+            Site URL
+            <input id="site-url" placeholder="https://www.youtube.com/shorts" required />
+          </label>
+
+          <div class="subdomain-control">
+            <label class="subdomain-toggle" for="include-subdomains">
+              <input id="include-subdomains" type="checkbox" checked />
+              <span>Include subdomains</span>
+            </label>
+            <p class="hint center">For example, this includes m.example.com and old.example.com.</p>
+          </div>
+
+          <label>
+            Allowed minutes per day
+            <input id="site-limit" type="number" min="1" step="1" placeholder="Leave empty for immediate block" />
+          </label>
+
+          <button class="btn primary" type="submit">Add or update site</button>
+          <p class="hint">Add a full URL with path to target specific sections, like https://www.youtube.com/shorts. Leave minutes empty for immediate blocking.</p>
+          <p id="rule-message" class="message"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Today</h2>
+        <p id="day-key" class="lead"></p>
+        <div id="rules-list" class="rules-list"></div>
+      </section>
+    </main>
+
+    <script src="options.js"></script>
+  </body>
+</html>
