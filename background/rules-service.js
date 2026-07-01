@@ -143,6 +143,64 @@ export async function removeRule(payload) {
   return { rules: nextRules };
 }
 
+export async function updateRule(payload) {
+  const ruleId = String(payload?.ruleId || "");
+  if (!ruleId) {
+    throw new Error("Rule id is required");
+  }
+
+  const { rules } = await chrome.storage.local.get(["rules"]);
+  const currentRules = Array.isArray(rules) ? rules : [];
+  const existing = currentRules.find((rule) => rule.id === ruleId);
+
+  if (!existing) {
+    throw new Error("Rule was not found");
+  }
+
+  const inputUrl = String(payload?.url || "").trim();
+  if (!inputUrl) {
+    throw new Error("Site URL is required");
+  }
+
+  const includeSubdomains = Boolean(payload?.includeSubdomains);
+  const baseLimitMinutes = normalizeLimit(payload?.baseLimitMinutes);
+  const parsedRule = parseRuleInput(inputUrl, includeSubdomains);
+
+  const duplicate = currentRules.find(
+    (rule) =>
+      rule.id !== ruleId &&
+      rule.host === parsedRule.host &&
+      normalizePathPrefix(rule.pathPrefix) === parsedRule.pathPrefix &&
+      Boolean(rule.includeSubdomains) === includeSubdomains
+  );
+
+  if (duplicate) {
+    throw new Error("A rule for this site and path already exists");
+  }
+
+  const nextRules = currentRules.map((rule) => {
+    if (rule.id !== ruleId) {
+      return rule;
+    }
+
+    return {
+      ...rule,
+      host: parsedRule.host,
+      pathPrefix: parsedRule.pathPrefix,
+      includeSubdomains,
+      label: buildRuleLabel(parsedRule),
+      baseLimitMinutes,
+      enabled: true,
+      updatedAt: Date.now()
+    };
+  });
+
+  await chrome.storage.local.set({ rules: nextRules });
+  await syncRegisteredContentScript();
+
+  return { rules: nextRules };
+}
+
 export async function updateSettings(payload) {
   const { settings } = await chrome.storage.local.get(["settings"]);
   const current = settings || DEFAULT_SETTINGS;
@@ -255,6 +313,8 @@ export async function extendTime(payload) {
     }
   });
 
+  await notifyRuleExtended(ruleId);
+
   return { success: true };
 }
 
@@ -294,4 +354,22 @@ function getRuleMatchPatterns(rules) {
   }
 
   return Array.from(set);
+}
+
+async function notifyRuleExtended(ruleId) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id) {
+      continue;
+    }
+
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        type: "TIME_EXTENDED",
+        payload: { ruleId }
+      });
+    } catch {
+      // Ignore tabs without the content script.
+    }
+  }
 }

@@ -1,11 +1,27 @@
 let overlayVisible = false;
 let monitorId = null;
+let activeOverlay = null;
 
 if (window.top === window) {
   boot();
 }
 
 async function boot() {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type !== "TIME_EXTENDED") {
+      return;
+    }
+
+    const ruleId = String(message?.payload?.ruleId || "");
+    if (!overlayVisible || !activeOverlay) {
+      return;
+    }
+
+    if (!ruleId || ruleId === activeOverlay.ruleId) {
+      activeOverlay.teardown();
+    }
+  });
+
   await checkAndMaybeBlock();
 
   monitorId = window.setInterval(async () => {
@@ -48,10 +64,20 @@ function showOverlay(state) {
   const choicesWrap = root.querySelector(".mt-choices");
   const mediaController = createMediaPauseController();
 
-  let secondsLeft = Number(state.waitSeconds || 30);
-  countdownText.textContent = `Pause for ${secondsLeft}s`;
+  const initialWaitSeconds = Number(state.waitSeconds || 30);
+  let secondsLeft = initialWaitSeconds;
+  countdownText.textContent = buildCountdownText(secondsLeft, true);
 
   const ticker = window.setInterval(() => {
+    const hasFocus = document.visibilityState === "visible" && document.hasFocus();
+    if (!hasFocus) {
+      if (secondsLeft !== initialWaitSeconds) {
+        secondsLeft = initialWaitSeconds;
+      }
+      countdownText.textContent = buildCountdownText(secondsLeft, false);
+      return;
+    }
+
     secondsLeft -= 1;
     if (secondsLeft <= 0) {
       window.clearInterval(ticker);
@@ -60,7 +86,7 @@ function showOverlay(state) {
       choicesWrap.classList.remove("mt-hidden");
       return;
     }
-    countdownText.textContent = `Pause for ${secondsLeft}s`;
+    countdownText.textContent = buildCountdownText(secondsLeft, true);
   }, 1000);
 
   for (const btn of root.querySelectorAll("[data-minutes]")) {
@@ -89,7 +115,21 @@ function showOverlay(state) {
     root.remove();
     style.remove();
     overlayVisible = false;
+    activeOverlay = null;
   }
+
+  activeOverlay = {
+    ruleId: String(state?.rule?.id || ""),
+    teardown
+  };
+}
+
+function buildCountdownText(secondsLeft, focused) {
+  if (!focused) {
+    return `Stay on this tab to continue: ${secondsLeft}s`;
+  }
+
+  return `Pause for ${secondsLeft}s`;
 }
 
 function createMediaPauseController() {
@@ -231,7 +271,7 @@ function overlayStyles() {
       border: 7px solid #6fb7ec;
       border-top-color: #1f6ca9;
       border-radius: 999px;
-      animation: mt-breathe 2.4s ease-in-out infinite;
+      animation: mt-breathe 5.5s ease-in-out infinite;
     }
 
     .mt-ring-done {

@@ -130,26 +130,39 @@ input {
 
 .rules-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .rule {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
+  border: 1px solid #b9daf2;
+  border-radius: 14px;
+  padding: 12px;
+  background: linear-gradient(165deg, #fafdff, #f2f9ff);
+  box-shadow: 0 8px 20px rgba(46, 112, 167, 0.1);
   display: grid;
   gap: 8px;
+}
+
+.rule-editing {
+  border-color: #78b3de;
+  box-shadow: 0 10px 24px rgba(46, 112, 167, 0.16);
 }
 
 .rule-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+}
+
+.rule-summary {
+  min-width: 0;
 }
 
 .rule-title {
   font-weight: 700;
+  font-size: 0.98rem;
+  overflow-wrap: anywhere;
 }
 
 .rule-meta {
@@ -161,6 +174,24 @@ input {
 .rule-actions {
   display: flex;
   gap: 8px;
+}
+
+.rule-actions .btn {
+  min-width: 72px;
+}
+
+.btn.ghost.danger {
+  background: #fdecef;
+  color: #9c2a3b;
+}
+
+.rule-edit-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.edit-toggle {
+  justify-content: flex-start;
 }
 
 @media (max-width: 560px) {

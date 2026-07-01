@@ -6,11 +6,11 @@ const siteUrlInput = document.getElementById("site-url");
 const includeSubdomainsInput = document.getElementById("include-subdomains");
 const siteLimitInput = document.getElementById("site-limit");
 const rulesListEl = document.getElementById("rules-list");
-const dayKeyEl = document.getElementById("day-key");
 const settingsMessageEl = document.getElementById("settings-message");
 const ruleMessageEl = document.getElementById("rule-message");
 
 let currentRows = [];
+let editingRuleId = null;
 
 boot().catch((error) => {
   setMessage(settingsMessageEl, error.message || "Failed to load settings", true);
@@ -99,7 +99,11 @@ async function loadDashboard() {
   }
 
   currentRows = Array.isArray(response.rows) ? response.rows : [];
-  dayKeyEl.textContent = `Usage day key: ${response.dayKey}`;
+
+  if (editingRuleId && !currentRows.some((row) => row.rule.id === editingRuleId)) {
+    editingRuleId = null;
+  }
+
   renderRules();
 }
 
@@ -109,35 +113,73 @@ function renderRules() {
     return;
   }
 
-  const fragments = currentRows
+  const html = currentRows
     .map((row) => {
       const rule = row.rule;
-      const used = formatMinutes(row.today.usedSeconds || 0);
-      const base = rule.baseLimitMinutes === null ? "Immediate block" : `${rule.baseLimitMinutes} min/day`;
-      const extra = row.today.extraMinutes > 0 ? ` + ${row.today.extraMinutes} min extension` : "";
-      const pathLabel = normalizePathPrefix(rule.pathPrefix);
-      const scopeLabel = rule.includeSubdomains ? "Includes subdomains" : "Only this host";
-
-      return `
-        <article class="rule" data-rule-id="${rule.id}">
-          <div class="rule-head">
-            <div>
-              <div class="rule-title">${escapeHtml(rule.label)}</div>
-              <p class="rule-meta">Limit: ${base}${extra}</p>
-              <p class="rule-meta">Path: ${escapeHtml(pathLabel)} | Scope: ${escapeHtml(scopeLabel)}</p>
-              <p class="rule-meta">Used today: ${used}</p>
-            </div>
-            <div class="rule-actions">
-              <button class="btn ghost" data-action="remove">Remove</button>
-            </div>
-          </div>
-        </article>
-      `;
+      const isEditing = rule.id === editingRuleId;
+      return isEditing ? renderEditableRule(row) : renderCompactRule(row);
     })
     .join("");
 
-  rulesListEl.innerHTML = fragments;
+  rulesListEl.innerHTML = html;
 
+  wireRuleActions();
+}
+
+function renderCompactRule(row) {
+  const rule = row.rule;
+  const used = formatMinutes(row.today.usedSeconds || 0);
+  const url = ruleToUrl(rule);
+
+  return `
+    <article class="rule" data-rule-id="${rule.id}">
+      <div class="rule-head">
+        <div class="rule-summary">
+          <div class="rule-title">${escapeHtml(url)}</div>
+          <p class="rule-meta">Used today: ${used}</p>
+        </div>
+        <div class="rule-actions">
+          <button class="btn ghost" data-action="edit">Edit</button>
+          <button class="btn ghost danger" data-action="remove">Remove</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderEditableRule(row) {
+  const rule = row.rule;
+  const url = ruleToUrl(rule);
+  const limitValue = rule.baseLimitMinutes === null ? "" : String(rule.baseLimitMinutes);
+
+  return `
+    <article class="rule rule-editing" data-rule-id="${rule.id}">
+      <div class="rule-edit-fields">
+        <label>
+          Site URL
+          <input data-edit-url value="${escapeHtml(url)}" />
+        </label>
+
+        <label class="subdomain-toggle edit-toggle" for="edit-subdomains-${rule.id}">
+          <input id="edit-subdomains-${rule.id}" data-edit-subdomains type="checkbox" ${rule.includeSubdomains ? "checked" : ""} />
+          <span>Include subdomains</span>
+        </label>
+
+        <label>
+          Allowed minutes per day
+          <input data-edit-limit type="number" min="1" step="1" placeholder="Leave empty for immediate block" value="${escapeHtml(limitValue)}" />
+        </label>
+      </div>
+
+      <div class="rule-actions">
+        <button class="btn primary" data-action="save">Save</button>
+        <button class="btn ghost" data-action="cancel">Cancel</button>
+      </div>
+    </article>
+  `;
+}
+
+function wireRuleActions() {
   for (const button of rulesListEl.querySelectorAll("button[data-action='remove']")) {
     button.addEventListener("click", async (event) => {
       const article = event.currentTarget.closest(".rule");
@@ -156,15 +198,100 @@ function renderRules() {
         return;
       }
 
+      if (editingRuleId === ruleId) {
+        editingRuleId = null;
+      }
+
       setMessage(ruleMessageEl, "Rule removed");
+      await loadDashboard();
+    });
+  }
+
+  for (const button of rulesListEl.querySelectorAll("button[data-action='edit']")) {
+    button.addEventListener("click", (event) => {
+      const article = event.currentTarget.closest(".rule");
+      const ruleId = article?.getAttribute("data-rule-id");
+      if (!ruleId) {
+        return;
+      }
+
+      editingRuleId = ruleId;
+      setMessage(ruleMessageEl, "");
+      renderRules();
+    });
+  }
+
+  for (const button of rulesListEl.querySelectorAll("button[data-action='cancel']")) {
+    button.addEventListener("click", () => {
+      editingRuleId = null;
+      setMessage(ruleMessageEl, "");
+      renderRules();
+    });
+  }
+
+  for (const button of rulesListEl.querySelectorAll("button[data-action='save']")) {
+    button.addEventListener("click", async (event) => {
+      const article = event.currentTarget.closest(".rule");
+      const ruleId = article?.getAttribute("data-rule-id");
+      if (!ruleId) {
+        return;
+      }
+
+      const urlInput = article.querySelector("input[data-edit-url]");
+      const subdomainsInput = article.querySelector("input[data-edit-subdomains]");
+      const limitInput = article.querySelector("input[data-edit-limit]");
+
+      const rawUrl = String(urlInput?.value || "").trim();
+      const includeSubdomains = Boolean(subdomainsInput?.checked);
+      const baseLimitMinutes = String(limitInput?.value || "").trim() === "" ? null : Number(limitInput.value);
+
+      let parsedRule;
+      try {
+        parsedRule = parseRuleInput(rawUrl);
+      } catch (error) {
+        setMessage(ruleMessageEl, error.message || "Invalid URL", true);
+        return;
+      }
+
+      const origins = hostToOrigins(parsedRule.host, includeSubdomains);
+      const permissionGranted = await requestOrigins(origins);
+      if (!permissionGranted) {
+        setMessage(ruleMessageEl, "Host permission was not granted", true);
+        return;
+      }
+
+      const response = await send({
+        type: "UPDATE_RULE",
+        payload: {
+          ruleId,
+          url: rawUrl,
+          includeSubdomains,
+          baseLimitMinutes
+        }
+      });
+
+      if (!response.ok) {
+        setMessage(ruleMessageEl, response.error || "Could not update rule", true);
+        return;
+      }
+
+      editingRuleId = null;
+      setMessage(ruleMessageEl, "Rule updated");
       await loadDashboard();
     });
   }
 }
 
+function ruleToUrl(rule) {
+  const host = canonicalizeHost(rule.host);
+  const path = normalizePathPrefix(rule.pathPrefix);
+  return path === "/" ? `https://${host}` : `https://${host}${path}`;
+}
+
 function setMessage(el, text, isError = false) {
   el.textContent = text || "";
   el.classList.remove("ok", "err");
+
   if (!text) {
     return;
   }
@@ -202,9 +329,11 @@ function hostToOrigins(host, includeSubdomains) {
     `http://${canonicalHost}/`,
     ...getWwwAliases(canonicalHost).flatMap((alias) => [`https://${alias}/`, `http://${alias}/`])
   ];
+
   if (includeSubdomains && !isIp(canonicalHost) && canonicalHost !== "localhost") {
     list.push(`https://*.${canonicalHost}/`, `http://*.${canonicalHost}/`);
   }
+
   return Array.from(new Set(list));
 }
 

@@ -1,55 +1,58 @@
 import { DEFAULT_SETTINGS, getDayKeyForNow, readRuleUsage } from "./common.js";
 import { findMatchingRule } from "./rules-service.js";
 
-let activeContext = null;
+let trackedContexts = new Map();
 
 export async function flushActiveTime() {
-  if (!activeContext) {
+  if (trackedContexts.size === 0) {
     return;
   }
 
-  const snapshot = activeContext;
   const now = Date.now();
-  const elapsedSeconds = Math.floor((now - snapshot.startedAt) / 1000);
-  if (elapsedSeconds <= 0) {
-    return;
-  }
+  const snapshots = Array.from(trackedContexts.values());
 
-  await addUsageSeconds(snapshot.ruleId, elapsedSeconds);
+  for (const snapshot of snapshots) {
+    await flushContextSnapshot(snapshot, now);
 
-  if (
-    activeContext &&
-    activeContext.tabId === snapshot.tabId &&
-    activeContext.ruleId === snapshot.ruleId &&
-    activeContext.startedAt === snapshot.startedAt
-  ) {
-    activeContext.startedAt = now;
+    const current = trackedContexts.get(snapshot.tabId);
+    if (
+      current &&
+      current.ruleId === snapshot.ruleId &&
+      current.startedAt === snapshot.startedAt
+    ) {
+      current.startedAt = now;
+      trackedContexts.set(snapshot.tabId, current);
+    }
   }
 }
 
 export async function refreshActiveContext() {
   await flushActiveTime();
 
-  const tracked = await findTrackedActiveTab();
-  if (!tracked) {
-    activeContext = null;
-    return;
+  const tracked = await findTrackedActiveTabs();
+  const now = Date.now();
+  const next = new Map();
+
+  for (const item of tracked) {
+    const existing = trackedContexts.get(item.tabId);
+    next.set(item.tabId, {
+      tabId: item.tabId,
+      ruleId: item.rule.id,
+      startedAt: existing && existing.ruleId === item.rule.id ? existing.startedAt : now
+    });
   }
 
-  activeContext = {
-    tabId: tracked.tabId,
-    ruleId: tracked.rule.id,
-    startedAt: Date.now()
-  };
+  trackedContexts = next;
 }
 
 export async function clearIfTrackingTabRemoved(tabId) {
-  if (!activeContext || activeContext.tabId !== tabId) {
+  const context = trackedContexts.get(tabId);
+  if (!context) {
     return;
   }
 
-  await flushActiveTime();
-  activeContext = null;
+  await flushContextSnapshot(context, Date.now());
+  trackedContexts.delete(tabId);
 }
 
 export async function cleanupUsage() {
@@ -73,18 +76,45 @@ export async function cleanupUsage() {
   await chrome.storage.local.set({ usage: next });
 }
 
-async function findTrackedActiveTab() {
-  const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (!activeTab || !activeTab.url || !/^https?:/i.test(activeTab.url)) {
-    return null;
+async function findTrackedActiveTabs() {
+  const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+  const matches = [];
+  const seenTabIds = new Set();
+
+  for (const windowInfo of windows) {
+    if (windowInfo.state === "minimized") {
+      continue;
+    }
+
+    const tabs = Array.isArray(windowInfo.tabs) ? windowInfo.tabs : [];
+    const activeTab = tabs.find((tab) => tab.active);
+    if (!activeTab || !activeTab.id || !activeTab.url || !/^https?:/i.test(activeTab.url)) {
+      continue;
+    }
+
+    if (seenTabIds.has(activeTab.id)) {
+      continue;
+    }
+
+    const rule = await findMatchingRule(activeTab.url);
+    if (!rule) {
+      continue;
+    }
+
+    seenTabIds.add(activeTab.id);
+    matches.push({ tabId: activeTab.id, rule });
   }
 
-  const rule = await findMatchingRule(activeTab.url);
-  if (!rule) {
-    return null;
+  return matches;
+}
+
+async function flushContextSnapshot(snapshot, now) {
+  const elapsedSeconds = Math.floor((now - snapshot.startedAt) / 1000);
+  if (elapsedSeconds <= 0) {
+    return;
   }
 
-  return { tabId: activeTab.id, rule };
+  await addUsageSeconds(snapshot.ruleId, elapsedSeconds);
 }
 
 async function addUsageSeconds(ruleId, secondsToAdd) {

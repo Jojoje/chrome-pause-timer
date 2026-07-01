@@ -5,6 +5,7 @@ import {
   getConfig,
   addRule,
   removeRule,
+  updateRule,
   updateSettings,
   getPageState,
   extendTime,
@@ -77,6 +78,11 @@ async function handleMessage(message) {
     }
     case "REMOVE_RULE": {
       const result = await removeRule(message.payload);
+      await refreshActiveContext();
+      return result;
+    }
+    case "UPDATE_RULE": {
+      const result = await updateRule(message.payload);
       await refreshActiveContext();
       return result;
     }

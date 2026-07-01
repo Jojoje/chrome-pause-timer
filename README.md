@@ -2,16 +2,21 @@
 
 Mindful Site Timer is a Chrome extension that helps you avoid doom-scrolling by applying daily time limits to selected sites and showing a short reflective pause before you continue.
 
+Current stable version: 1.0.1
+
 ## Features
 
 - Add rules for specific sites or specific paths, such as https://www.youtube.com/shorts
 - Choose whether each rule includes subdomains
 - Set a daily allowance in minutes, or leave empty for immediate block mode
-- Track active-tab usage in the background
+- Track active usage across visible browser windows
 - Show a full-screen pause overlay when the allowance is reached
+- Require tab focus for pause countdown completion
 - Offer quick extension choices for today only (1, 2, 5, 10 minutes)
+- Sync overlay dismissal across tabs when extension time is granted
 - Reset usage at local midnight or a custom reset time
 - Store everything locally in Chrome storage
+- Edit existing site rules inline from the site list
 
 ## Privacy
 
@@ -60,6 +65,12 @@ All extension state is stored on-device using Chrome local extension storage.
 - Manifest Version: MV3
 - Background Worker Type: module
 - Target Browser: Chrome
+
+## Releases
+
+- Changelog: CHANGELOG.md
+- 1.0.1 release notes: docs/release-notes-1.0.1.md
+- 1.0.1 store "What's New": docs/whats-new-1.0.1.md
 
 ## License
 
