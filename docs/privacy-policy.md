@@ -77,4 +77,6 @@ If this policy changes, the updated version will be published with a new "Last u
 
 For questions, support requests, or privacy-related concerns, please contact the repository owner through the project's GitHub repository issue tracker.
 
+Contact URL: https://github.com/Jojoje/chrome-pause-timer/issues
+
 When filing an issue, include your browser version, extension version, and a short description of the problem so it can be reviewed efficiently.
