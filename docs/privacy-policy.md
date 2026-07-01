@@ -1,6 +1,6 @@
 # Privacy Policy for Mindful Site Timer
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Overview
 
@@ -75,4 +75,6 @@ If this policy changes, the updated version will be published with a new "Last u
 
 ## Contact
 
-If you publish this extension, add your preferred contact channel here (for example, GitHub issues URL or email).
+For questions, support requests, or privacy-related concerns, please contact the repository owner through the project's GitHub repository issue tracker.
+
+When filing an issue, include your browser version, extension version, and a short description of the problem so it can be reviewed efficiently.
